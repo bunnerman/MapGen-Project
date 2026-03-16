@@ -13,6 +13,7 @@ It was invented by *Ken Perlin* in the 1980s.
 	This specific function defined by *Ken Perlin* smooths the output
 8. Perform **[[Linear Interpolation | Linear]] [[Interpolation]]** the values Horizontally, then Vertically
 > [!note] Linear Interpolation (`lerp`)
+>
 > Suppose 4 corners of the cells are `x0y1, x1y1, x0y0, x1y0`
 > ```c
 > p = lerp(x0y1, x1y1, u)
