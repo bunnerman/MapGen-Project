@@ -1,6 +1,5 @@
 #include <iostream>
 #include <iomanip>
-#include <string>
 #include <fstream>
 #include <vector>
 #include <cmath>
@@ -12,6 +11,7 @@ using std::cin;
 using std::vector;
 using std::string;
 
+#include <string>
 
 
 vector<vector<int>> generateGradientVectors(int resolution)
@@ -193,7 +193,6 @@ int main()
 	cin >> noiseResolution;
 
 	auto gradientGrid = generateGradientVectors(gradientResolution);
-	//--- displayGradientVectors(gradientGrid);
 
 	vector<vector<float>> noiseGrid(noiseResolution);
 	for (int i = 0; i < noiseResolution; i++)
@@ -207,8 +206,7 @@ int main()
 		but (..i, j..) not wrong in any other way
 	*/
 
-	//--- displayNoiseGrid(noiseGrid);
-	//--- writeNoiseGridToFile(noiseGrid);
+	writeNoiseGridToFile(noiseGrid);
 	
 	return 0;
 }
