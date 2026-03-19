@@ -47,9 +47,9 @@ vector<vector<int>> generatePerlinNoise(vector<vector<int>> gradientGrid, int pe
 	
 }
 
-void displayPerlinNoiseGrid(vector<vector<int>>)
+void displayPerlinNoise(vector<vector<int>> noiseGrid)
 {
-
+	
 }
 
 int main()
@@ -57,11 +57,11 @@ int main()
 	std::srand(std::time(nullptr));
 
 	int gradientResolution = 64; // how big the grid/map is
-	int perlinResolution = 256; // how detailed Noise will be (past a certain point there're no noticable gains)
+	int noiseResolution = 256; // how detailed Noise will be (past a certain point there're no noticable gains)
 	
 	auto gradientGrid = generateGradientVectors(gradientResolution);
 	displayGradientVectors(gradientGrid);
-	auto perlinGrid = generatePerlinNoise(gradientGrid, perlinResolution);
+	auto noiseGrid = generatePerlinNoise(gradientGrid, noiseResolution);
 	
 	return 0;
 }
