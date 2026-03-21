@@ -44,15 +44,15 @@ Nodes will likely still be needed for features like Peninsulas, Islands, Random 
 2) Use math functions to shift plates around on the grid matrix (experiment trial and error for how much the world age should be before realistic continents form), form higher altitudes where plates collide.
 3) Remember to assign plate boundaries realistically
 
-> [!NOTE] CONTINENTS CONCEPT WITHOUT PLATE BOUNDARY TYPES - Check Image
+> [!note] CONTINENTS CONCEPT WITHOUT PLATE BOUNDARY TYPES - Check Image
 
 ### APPROACH 3 - Noise Generation
-Easiest to do and most practical. Will give Minecraft-like terrain instead of continents BUT terrain will be just fine, probably should try this first.
+Easiest to do and most practical. Will give Minecraft-like terrain instead of continents BUT terrain will be just fine, probably should try this first. A few modifications could make realistic macroterrain *(?)* 
 
 Use Perlin Noise.
 
-> [!NOTE] TERRAIN CONCEPT - Check Image
+> [!note] TERRAIN CONCEPT - Check Image
 > Terrain would look like this, no realistic continental masses but good enough for small scale terrain demonstration
 
-> [!tip] Biomes
-> Multiple layers for other features like biomes. A few modifications could make realistic macroterrain *(?)* 
+> [!note] Biomes
+> Multiple layers for other features like biomes.
