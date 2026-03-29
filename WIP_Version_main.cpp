@@ -87,10 +87,10 @@ float linearInterpolation(float a, float b, float t)
 	return (a + t * (b - a));
 }
 
-float generatePerlinValue(int x, int y, vector<vector<int>> &gradientGrid, int mapSize)
+float generatePerlinValue(float x, float y, vector<vector<int>> &gradientGrid, int mapSize)
 {
-	int baseGradientResolution = gradientGrid.size();
-	float scale = (float) (baseGradientResolution - 1) / mapSize;
+	int gradientResolution = gradientGrid.size();
+	float scale = (float) (gradientResolution - 1) / mapSize;
 
 	// Coordinates in Gradient Grid
 	float sx = x * scale;
@@ -105,10 +105,10 @@ float generatePerlinValue(int x, int y, vector<vector<int>> &gradientGrid, int m
 	float ly = sy - gy;
 
 	// Grid Cell Corner Coordinates relative to Gradient Grid | (0, 0) = Bottom-Left Grid Corner
-	int x0 = gx;
-	int y0 = gy;
-	int x1 = gx + 1;
-	int y1 = gy + 1;
+	int x0 = gx % gradientResolution;
+	int y0 = gy % gradientResolution;
+	int x1 = (gx + 1) % gradientResolution;
+	int y1 = (gy + 1) % gradientResolution;
 
 	// Distance Vectors | (0, 0) = Bottom-Left Grid Corner
 	float dx00 = lx;
@@ -144,21 +144,21 @@ float generatePerlinValue(int x, int y, vector<vector<int>> &gradientGrid, int m
 
 
 
-void displayNoiseGrid(vector<vector<float>> &noiseGrid)
+void displayNoiseGrid(vector<vector<float>> &noiseMap)
 {
-	int mapSize = noiseGrid.size();
+	int mapSize = noiseMap.size();
 
 	for (int i = 0; i < mapSize; i++)
 	{
 		for (int j = 0; j < mapSize; j++)
-			cout << std::setw(7) << noiseGrid[i][j] << " ";
+			cout << std::setw(7) << noiseMap[i][j] << " ";
 		cout << "\n";
 	}
 }
 
 
 
-void writeNoiseGridToFile(vector<vector<float>> &noiseGrid)
+void writeNoiseGridToFile(vector<vector<float>> &noiseMap)
 {
 	std::ofstream outputFile("outputFile.txt");
 	if (!outputFile)
@@ -166,41 +166,70 @@ void writeNoiseGridToFile(vector<vector<float>> &noiseGrid)
 		cout << "ERROR! FILE NOT ABLE TO BE OPENED";
 		return;
 	}
-    int mapSize = noiseGrid.size();
+    int mapSize = noiseMap.size();
 
     for (int i = 0; i < mapSize; i++)
     {
         for (int j = 0; j < mapSize; j++)
-            outputFile << std::setw(10) << noiseGrid[i][j] << " ";
+            outputFile << std::setw(10) << noiseMap[i][j] << " ";
         outputFile << "\n";
     }
 
     outputFile.close();
 }
 
-
+void layerOctave(vector<vector<float>> &noiseMap)
+{
+	
+}
 
 int main()
 {
 	std::srand(std::time(nullptr));
 
-	int baseGradientResolution = 8;
-	int mapSize = 512;
-	auto gradientGrid = generateGradientVectors(baseGradientResolution);
+	int baseGradientResolution = 4;
+	int mapSize = 1024;
+	int octaves = 8;
+	float persistence = 0.5; // amplitude, influence
+	float lacunarity = 2; // frequency, detail-gain
+	float contrast = 1;
 
-	vector<vector<float>> noiseGrid(mapSize);
+	vector<vector<int>> gradientGrid = generateGradientVectors(baseGradientResolution);
+	vector<vector<float>> noiseMap(mapSize);
+
 	for (int i = 0; i < mapSize; i++)
 	{
-		noiseGrid[i].resize(mapSize);
+		noiseMap[i].resize(mapSize, 0.0f);
 		for (int j = 0; j < mapSize; j++)
-			noiseGrid[i][j] = generatePerlinValue(j, i, gradientGrid, mapSize);
+		{
+			float amplitude = 1.0f;
+			float frequency = 1.0f;
+			float value = 0.0f;
+			float maxAmp = 0.0f;
+			for (int k = 0; k < octaves; k++)
+			{
+				value += generatePerlinValue
+				(
+					(float) j * frequency, 
+					(float) i * frequency, 
+					gradientGrid, 
+					mapSize
+				) 
+				* amplitude;
+
+				maxAmp += amplitude;
+				amplitude *= persistence;
+				frequency *= lacunarity;
+			}
+			noiseMap[i][j] = (value / maxAmp) * contrast;
+		}
 	}
 	/*  
 		swapping j and i maintains expected standards in math/graphics instead of transposely generating,
 		but (..i, j..) not wrong in any other way
 	*/
-
-	writeNoiseGridToFile(noiseGrid);
+	
+	writeNoiseGridToFile(noiseMap);
 	
 	return 0;
 }
