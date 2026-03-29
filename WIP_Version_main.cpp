@@ -14,9 +14,9 @@ using std::string;
 #include <string>
 
 
-vector<vector<int>> generateGradientVectors(int resolution)
+vector<vector<int>> generateGradientGrid(float resolution)
 {
-    vector<vector<int>> gradientGrid(resolution);
+    vector<vector<int>> gradientGrid((int)resolution);
 	for (int i = 0; i < resolution; i++)
 		gradientGrid[i].resize(resolution);
 
@@ -77,6 +77,8 @@ float dotProduct(int gradientIndex, float dx, float dy)
 	return gradientX * dx + gradientY * dy;
 }
 
+
+
 float perlinFadeFunction(float t)
 {
 	return (6 * (t*t*t*t*t) - 15 * (t*t*t*t) + 10 * (t*t*t));
@@ -87,10 +89,12 @@ float linearInterpolation(float a, float b, float t)
 	return (a + t * (b - a));
 }
 
+
+
 float generatePerlinValue(float x, float y, vector<vector<int>> &gradientGrid, int mapSize)
 {
 	int gradientResolution = gradientGrid.size();
-	float scale = (float) (gradientResolution - 1) / mapSize;
+	float scale = (float) gradientResolution / mapSize;
 
 	// Coordinates in Gradient Grid
 	float sx = x * scale;
@@ -142,23 +146,12 @@ float generatePerlinValue(float x, float y, vector<vector<int>> &gradientGrid, i
 	return value;
 }
 
-
-
-void displayNoiseGrid(vector<vector<float>> &noiseMap)
+void generateNoiseGrid(vector<vector<float>> &noiseGrid)
 {
-	int mapSize = noiseMap.size();
 
-	for (int i = 0; i < mapSize; i++)
-	{
-		for (int j = 0; j < mapSize; j++)
-			cout << std::setw(7) << noiseMap[i][j] << " ";
-		cout << "\n";
-	}
 }
 
-
-
-void writeNoiseGridToFile(vector<vector<float>> &noiseMap)
+void writeNoiseGridToFile(vector<vector<float>> &noiseGrid)
 {
 	std::ofstream outputFile("outputFile.txt");
 	if (!outputFile)
@@ -166,62 +159,77 @@ void writeNoiseGridToFile(vector<vector<float>> &noiseMap)
 		cout << "ERROR! FILE NOT ABLE TO BE OPENED";
 		return;
 	}
-    int mapSize = noiseMap.size();
+    int mapSize = noiseGrid.size();
 
     for (int i = 0; i < mapSize; i++)
     {
         for (int j = 0; j < mapSize; j++)
-            outputFile << std::setw(10) << noiseMap[i][j] << " ";
+            outputFile << std::setw(10) << noiseGrid[i][j] << " ";
         outputFile << "\n";
     }
 
     outputFile.close();
 }
 
-void layerOctave(vector<vector<float>> &noiseMap)
-{
-	
-}
+
 
 int main()
 {
 	std::srand(std::time(nullptr));
 
 	int baseGradientResolution = 4;
-	int mapSize = 1024;
-	int octaves = 8;
-	float persistence = 0.5; // amplitude, influence
-	float lacunarity = 2; // frequency, detail-gain
-	float contrast = 1;
+	int mapSize = 512;
+	int octaves = 6;
+	float persistence = 0.5f; // amplitude, influence
+	float lacunarity = 2.0f; // frequency, detail-gain
+	float contrast = 1.0f;
 
-	vector<vector<int>> gradientGrid = generateGradientVectors(baseGradientResolution);
-	vector<vector<float>> noiseMap(mapSize);
+	/* first see whats up with maxAmp messing up the relatively +-0.6 distribution
+	float maxAmp = 0.0f;
+	float octAmp = 1.0f;
 
+	for (int i = 0; i < octaves; i++)
+	{
+		maxAmp += octAmp;
+		octAmp *= persistence;
+	}
+	*/
+
+	vector<vector<vector<int>>> gradientGrids(octaves);
+	vector<vector<float>> noiseGrid(mapSize);
+
+	float currentRes = baseGradientResolution;
+	for (int i = 0; i < octaves; i++)
+	{
+		gradientGrids[i] = generateGradientGrid(currentRes);
+		currentRes *= lacunarity;
+	}
 	for (int i = 0; i < mapSize; i++)
 	{
-		noiseMap[i].resize(mapSize, 0.0f);
+		noiseGrid[i].resize(mapSize, 0.0f);
 		for (int j = 0; j < mapSize; j++)
 		{
 			float amplitude = 1.0f;
 			float frequency = 1.0f;
 			float value = 0.0f;
-			float maxAmp = 0.0f;
 			for (int k = 0; k < octaves; k++)
 			{
 				value += generatePerlinValue
 				(
-					(float) j * frequency, 
-					(float) i * frequency, 
-					gradientGrid, 
+					(float) j, 
+					(float) i, 
+					gradientGrids[k], 
 					mapSize
 				) 
 				* amplitude;
 
-				maxAmp += amplitude;
 				amplitude *= persistence;
 				frequency *= lacunarity;
 			}
-			noiseMap[i][j] = (value / maxAmp) * contrast;
+			value *= contrast;
+			// value /= maxAmp; ^^^ SEE ABOVE
+			noiseGrid[i][j] = +value;
+	
 		}
 	}
 	/*  
@@ -229,7 +237,7 @@ int main()
 		but (..i, j..) not wrong in any other way
 	*/
 	
-	writeNoiseGridToFile(noiseMap);
+	writeNoiseGridToFile(noiseGrid);
 	
 	return 0;
 }
