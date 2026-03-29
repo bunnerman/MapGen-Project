@@ -1,5 +1,4 @@
 #include <iostream>
-#include <iomanip>
 #include <fstream>
 #include <vector>
 #include <cmath>
@@ -14,9 +13,10 @@ using std::string;
 #include <string>
 
 
-vector<vector<int>> generateGradientVectors(int resolution)
+vector<vector<int>> generateGradientGrid(float res)
 {
-    vector<vector<int>> gradientGrid(resolution);
+	int resolution = (int) res;
+    vector<vector<int>> gradientGrid((int)resolution);
 	for (int i = 0; i < resolution; i++)
 		gradientGrid[i].resize(resolution);
 
@@ -52,30 +52,32 @@ float dotProduct(int gradientIndex, float dx, float dy)
 
 		θ is derived from the gradient index, 0 = 0 degrees, 1 = 45 degrees, so on. East (Positive X) = 0 degrees
 	*/
-	float gx;
-	float gy;
+	float gradientX;
+	float gradientY;
 	switch(gradientIndex)
 	{
 		case 0:
-			gx =  1.0f; gy =  0.0f; break;
+			gradientX =  1.0f; gradientY =  0.0f; break;
 		case 1:
-			gx =  0.70710678f; gy =  0.70710678f; break;
+			gradientX =  0.70710678f; gradientY =  0.70710678f; break;
 		case 2:
-			gx =  0.0f; gy =  1.0f; break;
+			gradientX =  0.0f; gradientY =  1.0f; break;
 		case 3:
-			gx = -0.70710678f; gy =  0.70710678f; break; // eg: gx = cos(135), gy = sin(135) 
+			gradientX = -0.70710678f; gradientY =  0.70710678f; break; // eg: gx = cos(135), gy = sin(135) 
 		case 4:
-			gx = -1.0f; gy =  0.0f; break;
+			gradientX = -1.0f; gradientY =  0.0f; break;
 		case 5:
-			gx = -0.70710678f; gy = -0.70710678f; break;
+			gradientX = -0.70710678f; gradientY = -0.70710678f; break;
 		case 6:
-			gx =  0.0f; gy = -1.0f; break;
+			gradientX =  0.0f; gradientY = -1.0f; break;
 		case 7:
-			gx =  0.70710678f; gy = -0.70710678f; break;
+			gradientX =  0.70710678f; gradientY = -0.70710678f; break;
 	}
 
-	return gx * dx + gy * dy;
+	return gradientX * dx + gradientY * dy;
 }
+
+
 
 float perlinFadeFunction(float t)
 {
@@ -87,10 +89,12 @@ float linearInterpolation(float a, float b, float t)
 	return (a + t * (b - a));
 }
 
-float generatePerlinValue(int x, int y, vector<vector<int>> &gradientGrid, int noiseResolution)
+
+
+float generatePerlinValue(float x, float y, vector<vector<int>> &gradientGrid, int mapSize)
 {
 	int gradientResolution = gradientGrid.size();
-	float scale = (float) (gradientResolution - 1) / noiseResolution; // sample points
+	float scale = (float) gradientResolution / mapSize;
 
 	// Coordinates in Gradient Grid
 	float sx = x * scale;
@@ -105,10 +109,10 @@ float generatePerlinValue(int x, int y, vector<vector<int>> &gradientGrid, int n
 	float ly = sy - gy;
 
 	// Grid Cell Corner Coordinates relative to Gradient Grid | (0, 0) = Bottom-Left Grid Corner
-	int x0 = gx;
-	int y0 = gy;
-	int x1 = gx + 1;
-	int y1 = gy + 1;
+	int x0 = gx % gradientResolution;
+	int y0 = gy % gradientResolution;
+	int x1 = (gx + 1) % gradientResolution;
+	int y1 = (gy + 1) % gradientResolution;
 
 	// Distance Vectors | (0, 0) = Bottom-Left Grid Corner
 	float dx00 = lx;
@@ -142,22 +146,6 @@ float generatePerlinValue(int x, int y, vector<vector<int>> &gradientGrid, int n
 	return value;
 }
 
-
-
-void displayNoiseGrid(vector<vector<float>> &noiseGrid)
-{
-	int noiseResolution = noiseGrid.size();
-
-	for (int i = 0; i < noiseResolution; i++)
-	{
-		for (int j = 0; j < noiseResolution; j++)
-			cout << std::setw(7) << noiseGrid[i][j] << " ";
-		cout << "\n";
-	}
-}
-
-
-
 void writeNoiseGridToFile(vector<vector<float>> &noiseGrid)
 {
 	std::ofstream outputFile("outputFile.txt");
@@ -166,12 +154,12 @@ void writeNoiseGridToFile(vector<vector<float>> &noiseGrid)
 		cout << "ERROR! FILE NOT ABLE TO BE OPENED";
 		return;
 	}
-    int noiseResolution = noiseGrid.size();
+    int mapSize = noiseGrid.size();
 
-    for (int i = 0; i < noiseResolution; i++)
+    for (int i = 0; i < mapSize; i++)
     {
-        for (int j = 0; j < noiseResolution; j++)
-            outputFile << std::setw(10) << noiseGrid[i][j] << " ";
+        for (int j = 0; j < mapSize; j++)
+            outputFile << noiseGrid[i][j] << " ";
         outputFile << "\n";
     }
 
@@ -184,27 +172,65 @@ int main()
 {
 	std::srand(std::time(nullptr));
 
-	int gradientResolution; // how big the grid/map is
-	int noiseResolution; // how detailed Noise will be (past a certain point there're no noticable gains)
+	int baseGradientResolution = 4;
+	int mapSize = 512;
+	int octaves = 6;
+	float persistence = 0.5f; // amplitude, influence
+	float lacunarity = 2.0f; // frequency, detail-gain
+	float contrast = 1.0f;
 
-	cout << "Enter Gradient Grid resolution: ";
-	cin >> gradientResolution;
-	cout << "Enter Noise Grid resolution: ";
-	cin >> noiseResolution;
+	vector<vector<vector<int>>> gradientGrids(octaves);
+	vector<vector<float>> noiseGrid(mapSize);
 
-	auto gradientGrid = generateGradientVectors(gradientResolution);
 
-	vector<vector<float>> noiseGrid(noiseResolution);
-	for (int i = 0; i < noiseResolution; i++)
+	float currentRes = baseGradientResolution;
+	for (int i = 0; i < octaves; i++)
 	{
-		noiseGrid[i].resize(noiseResolution);
-		for (int j = 0; j < noiseResolution; j++)
-			noiseGrid[i][j] = generatePerlinValue(j, i, gradientGrid, noiseResolution);
+		gradientGrids[i] = generateGradientGrid(currentRes);
+		currentRes *= lacunarity;
 	}
-	/*  
-		swapping j and i maintains expected standards in math/graphics instead of transposely generating,
-		but (..i, j..) not wrong in any other way
-	*/
+
+	float minValue = 1000.0f;
+	float maxValue = -1000.0f;
+
+	for (int i = 0; i < mapSize; i++)
+	{
+		noiseGrid[i].resize(mapSize, 0.0f);
+		for (int j = 0; j < mapSize; j++)
+		{
+			float amplitude = 1.0f;
+			float frequency = 1.0f;
+			float value = 0.0f;
+			for (int k = 0; k < octaves; k++)
+			{
+				value += generatePerlinValue
+				(
+					(float) j, 
+					(float) i, 
+					gradientGrids[k], 
+					mapSize
+				) 
+				* amplitude;
+
+				amplitude *= persistence;
+				frequency *= lacunarity;
+			}
+			/*  
+			swapping j and i maintains expected standards in math/graphics instead of transposely generating,
+			but (..i, j..) not wrong in any other way
+			*/
+			value *= contrast;
+			if (value < minValue)
+				minValue = value;
+			if (value > maxValue)
+				maxValue = value;
+			noiseGrid[i][j] = value;
+	
+		}
+	}
+	for (int i = 0; i < mapSize; i++)
+		for (int j = 0; j < mapSize; j++)
+			noiseGrid[i][j] = (noiseGrid[i][j] - minValue) / (maxValue - minValue);
 
 	writeNoiseGridToFile(noiseGrid);
 	
