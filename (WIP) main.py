@@ -1,6 +1,14 @@
+#-------------------------------#
+#            IMPORTS            #
+#-------------------------------#
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+
+#-------------------------------#
+#             LOGIC             #
+#-------------------------------#
 
 def build_terrain_colormap():
     terrain_colors = [
@@ -26,8 +34,11 @@ def build_terrain_colormap():
         list(zip(positions, colors))
     )
 
-col = build_terrain_colormap()
+earthColors = build_terrain_colormap()
 data = np.loadtxt("outputFile.txt")
-plt.imshow(data, cmap=col, interpolation='nearest')
+
+plt.imshow(data, cmap=earthColors, interpolation='nearest')
+# plt.imshow(data, cmap="gray", interpolation="nearest")
+
 plt.colorbar()
 plt.show()
