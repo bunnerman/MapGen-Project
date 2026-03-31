@@ -1,17 +1,25 @@
+//-------------------------------//
+//        HEADERS & USING        //
+//-------------------------------//
+
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <cmath>
 #include <ctime>
 #include <cstdlib>
+#include <random>
 
 using std::cout;
 using std::cin;
 using std::vector;
 using std::string;
 
-#include <string>
+#include <string> // unnecessary but keep for now
 
+//-------------------------------//
+//           FUNCTIONS           //
+//-------------------------------//
 
 vector<vector<int>> generateGradientGrid(float res)
 {
@@ -50,7 +58,8 @@ float dotProduct(int gradientIndex, float dx, float dy)
 		cos θ represents x component as it has it's peak values at 0 and 180
 		sin θ represents y component as it has it's peak values at 90 and 270
 
-		θ is derived from the gradient index, 0 = 0 degrees, 1 = 45 degrees, so on. East (Positive X) = 0 degrees
+		θ is derived from the gradient index, 0 = 0 degrees, 1 = 45 degrees, so on. 
+		East (Positive X) = 0 degrees
 	*/
 	float gradientX;
 	float gradientY;
@@ -166,18 +175,19 @@ void writeNoiseGridToFile(vector<vector<float>> &noiseGrid)
     outputFile.close();
 }
 
-
+//-------------------------------//
+//              MAIN             //
+//-------------------------------//
 
 int main()
 {
 	std::srand(std::time(nullptr));
 
-	int baseGradientResolution = 4;
-	int mapSize = 512;
-	int octaves = 6;
-	float persistence = 0.5f; // amplitude, influence
-	float lacunarity = 2.0f; // frequency, detail-gain
-	float contrast = 1.0f;
+	int baseGradientResolution = 4; // 4
+	int mapSize = 512; // 512
+	int octaves = 6; // 6
+	float persistence = 0.5f; // 0.5f - amplitude, influence
+	float lacunarity = 2.0f; // 2.0f - frequency, detail-gain
 
 	vector<vector<vector<int>>> gradientGrids(octaves);
 	vector<vector<float>> noiseGrid(mapSize);
@@ -199,27 +209,13 @@ int main()
 		for (int j = 0; j < mapSize; j++)
 		{
 			float amplitude = 1.0f;
-			float frequency = 1.0f;
 			float value = 0.0f;
 			for (int k = 0; k < octaves; k++)
 			{
-				value += generatePerlinValue
-				(
-					(float) j, 
-					(float) i, 
-					gradientGrids[k], 
-					mapSize
-				) 
-				* amplitude;
-
+				value += generatePerlinValue((float) j, (float) i, gradientGrids[k], mapSize) * amplitude;
+				// i and j swappred, see documentation
 				amplitude *= persistence;
-				frequency *= lacunarity;
 			}
-			/*  
-			swapping j and i maintains expected standards in math/graphics instead of transposely generating,
-			but (..i, j..) not wrong in any other way
-			*/
-			value *= contrast;
 			if (value < minValue)
 				minValue = value;
 			if (value > maxValue)
@@ -228,6 +224,8 @@ int main()
 	
 		}
 	}
+
+	// Normalizing values between 0.0 and 1.0
 	for (int i = 0; i < mapSize; i++)
 		for (int j = 0; j < mapSize; j++)
 			noiseGrid[i][j] = (noiseGrid[i][j] - minValue) / (maxValue - minValue);
