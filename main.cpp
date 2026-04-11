@@ -5,20 +5,22 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <cmath>
-#include <random>
 #include <chrono>
-#include <cstdint>
-#include <typeinfo> //? For Debugging
+#include <cmath>
+#include <cstdint> //? For convenient typedef names
+#include <typeinfo> //? keep for debugging
 
-// RNG Algorithm with balance of fast and good
-struct PCG32 //! No touching, write documentation later
+//-------------------------------//
+//              RNG              //
+//-------------------------------//
+
+struct PCG32 //! DONT TOUCH until algorithm learnt
 {
-	uint64_t state;
+    uint64_t state;
     uint64_t inc;
 
-    PCG32(uint64_t seed, uint64_t seq = 1) 
-	{
+    PCG32(uint64_t seed, uint64_t seq = 1)
+    {
         state = 0;
         inc = (seq << 1u) | 1u;
         next();
@@ -26,8 +28,8 @@ struct PCG32 //! No touching, write documentation later
         next();
     }
 
-    uint32_t next() 
-	{
+    uint32_t next()
+    {
         uint64_t oldstate = state;
         state = oldstate * 6364136223846793005ULL + inc;
 
@@ -40,109 +42,85 @@ struct PCG32 //! No touching, write documentation later
 };
 
 //-------------------------------//
+//       PERMUTATION TABLE       //
+//-------------------------------//
+
+void initPermutation(PCG32& rng, std::vector<int>& perm)
+{
+    std::vector<int> p(256);
+
+    for (int i = 0; i < 256; i++)
+        p[i] = i;
+
+    for (int i = 255; i > 0; i--)
+    {
+        int j = rng.next() % (i + 1);
+        std::swap(p[i], p[j]);
+    }
+
+    for (int i = 0; i < 512; i++)
+        perm[i] = p[i & 255];
+}
+
+//-------------------------------//
 //           FUNCTIONS           //
 //-------------------------------//
 
-std::vector<std::vector<int>> generateGradientGrid(PCG32& rng, float res)
+float dotProduct(int hash, float x, float y)
 {
-	int resolution = (int) res;
-    std::vector<std::vector<int>> gradientGrid(resolution, std::vector<int>(resolution));
+    switch(hash & 7)
+    {
+        case 0: 
+			return x + y;
+        case 1: 
+			return -x + y;
+        case 2: 
+			return x - y;
+        case 3: 
+			return -x - y;
+        case 4: 
+			return x;
+        case 5: 
+			return -x;
+        case 6: 
+			return y;
+        case 7: 
+			return -y;
+    }
 
-    for (int i = 0; i < resolution; i++)
-        for (int j = 0; j < resolution; j++)
-            gradientGrid[i][j] = rng.next() & 15; // bitwise is faster for powers of 2
-
-    return gradientGrid;
+    return 0;
 }
-
-
-
-void displayGradientVectors(std::vector<std::vector<int>> &gradientGrid)
-{
-	int resolution = gradientGrid.size();
-	for (std::vector<int> &i : gradientGrid)
-	{
-		for (int &j : i)
-			std::cout << j << " ";
-		std::cout << "\n";
-	}
-}
-
-
-
-float dotProduct(int gradientIndex, float dx, float dy)
-{
-	/*
-		gx, gy = (cos θ, sin θ)
-		cos θ represents x component as it has it's peak values at 0 and 180
-		sin θ represents y component as it has it's peak values at 90 and 270
-
-		θ is derived from the gradient index, 0 = 0 degrees, 1 = 22.5 degrees, so on. 
-		East (Positive X) = 0 degrees
-	*/
-	float gradientX;
-	float gradientY;
-	switch(gradientIndex)
-	{
-		case 0:  gradientX =  1.00000000f; gradientY =  0.00000000f; break;
-		case 1:  gradientX =  0.92387953f; gradientY =  0.38268343f; break;
-		case 2:  gradientX =  0.70710678f; gradientY =  0.70710678f; break;
-		case 3:  gradientX =  0.38268343f; gradientY =  0.92387953f; break;
-		case 4:  gradientX =  0.00000000f; gradientY =  1.00000000f; break;
-		case 5:  gradientX = -0.38268343f; gradientY =  0.92387953f; break;
-		case 6:  gradientX = -0.70710678f; gradientY =  0.70710678f; break;
-		case 7:  gradientX = -0.92387953f; gradientY =  0.38268343f; break;
-		case 8:  gradientX = -1.00000000f; gradientY =  0.00000000f; break;
-		case 9:  gradientX = -0.92387953f; gradientY = -0.38268343f; break;
-		case 10: gradientX = -0.70710678f; gradientY = -0.70710678f; break;
-		case 11: gradientX = -0.38268343f; gradientY = -0.92387953f; break;
-		case 12: gradientX =  0.00000000f; gradientY = -1.00000000f; break;
-		case 13: gradientX =  0.38268343f; gradientY = -0.92387953f; break;
-		case 14: gradientX =  0.70710678f; gradientY = -0.70710678f; break;
-		case 15: gradientX =  0.92387953f; gradientY = -0.38268343f; break;
-	}
-
-	return gradientX * dx + gradientY * dy;
-}
-
-
 
 float perlinFadeFunction(float t)
 {
-	return (6 * (t*t*t*t*t) - 15 * (t*t*t*t) + 10 * (t*t*t));
+    return (6*t*t*t*t*t - 15*t*t*t*t + 10*t*t*t);
 }
 
 float linearInterpolation(float a, float b, float t)
 {
-	return (a + t * (b - a));
+    return (a + t * (b - a));
 }
 
+//-------------------------------//
+//        PERLIN FUNCTION        //
+//-------------------------------//
 
-
-float generatePerlinValue(float x, float y, std::vector<std::vector<int>> &gradientGrid, int mapSize)
+float generatePerlinValue(float x, float y, std::vector<int>& perm)
 {
-	int gradientResolution = gradientGrid.size();
-	float scale = (float) gradientResolution / mapSize;
-
-	// Coordinates in Gradient Grid
-	float sx = x * scale;
-	float sy = y * scale;
-
 	// Grid Cell
-	int gx = (int) floor(sx);
-	int gy = (int) floor(sy);
+    int x0 = (int) floor(x);
+    int y0 = (int) floor(y);
+    int x1 = x0 + 1;
+    int y1 = y0 + 1;
 
 	// Local Coordinates
-	float lx = sx - gx;
-	float ly = sy - gy;
+    float lx = x - x0;
+    float ly = y - y0;
 
-	// Grid Cell Corner Coordinates relative to Gradient Grid | (0, 0) = Bottom-Left Grid Corner
-	int x0 = gx % gradientResolution;
-	int y0 = gy % gradientResolution;
-	int x1 = (gx + 1) % gradientResolution;
-	int y1 = (gy + 1) % gradientResolution;
+    float u = perlinFadeFunction(lx);
+    float v = perlinFadeFunction(ly);
 
-	// Distance Vectors | (0, 0) = Bottom-Left Grid Corner
+	/* //? Distance Vector Components - Omitted for micro-optimization
 	float dvx00 = lx;
 	float dvy00 = ly;
 
@@ -154,35 +132,38 @@ float generatePerlinValue(float x, float y, std::vector<std::vector<int>> &gradi
 
 	float dvx11 = lx - 1;
 	float dvy11 = ly - 1;
+	*/
 
-	// Dot Products
-	float dotProduct00 = dotProduct(gradientGrid[y0][x0], dvx00, dvy00);
-	float dotProduct10 = dotProduct(gradientGrid[y0][x1], dvx10, dvy10);
-	float dotProduct01 = dotProduct(gradientGrid[y1][x0], dvx01, dvy01);
-	float dotProduct11 = dotProduct(gradientGrid[y1][x1], dvx11, dvy11);
+	// Hashing corner gradient indices
+    int h00 = perm[(perm[x0 & 255] + y0) & 255];
+    int h10 = perm[(perm[x1 & 255] + y0) & 255];
+    int h01 = perm[(perm[x0 & 255] + y1) & 255];
+    int h11 = perm[(perm[x1 & 255] + y1) & 255];
 
-	// Perlin Fade Function
-	float u = perlinFadeFunction(lx);
-	float v = perlinFadeFunction(ly);
+	// Dot Producting
+    float dot00 = dotProduct(h00, lx, ly);
+    float dot10 = dotProduct(h10, lx - 1, ly);
+    float dot01 = dotProduct(h01, lx, ly - 1);
+    float dot11 = dotProduct(h11, lx - 1, ly - 1);
 
-	// Interpolation and FINAL RESULT
-	float ix0 = linearInterpolation(dotProduct00, dotProduct10, u);
-	float ix1 = linearInterpolation(dotProduct01, dotProduct11, u);
-
-	float value = linearInterpolation(ix0, ix1, v);
-
-	return value;
+	// Lerping
+    float ix0 = linearInterpolation(dot00, dot10, u);
+    float ix1 = linearInterpolation(dot01, dot11, u);
+	
+	// Final Value after interpolation on both axes
+    return linearInterpolation(ix0, ix1, v);
 }
+
+//-------------------------------//
 
 void writeNoiseGridToFile(std::vector<std::vector<float>> &noiseGrid)
 {
-	std::ofstream outputFile("outputFile.txt");
-	if (!outputFile)
-	{
-		std::cout << "ERROR! FILE NOT ABLE TO BE OPENED";
-		return;
-	}
-    int mapSize = noiseGrid.size();
+    std::ofstream outputFile("outputFile.txt");
+    if (!outputFile)
+    {
+        std::cout << "ERROR! FILE NOT ABLE TO BE OPENED";
+        return;
+    }
 
     for (auto &i : noiseGrid)
     {
@@ -200,56 +181,61 @@ void writeNoiseGridToFile(std::vector<std::vector<float>> &noiseGrid)
 
 int main()
 {
-	auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count(); // long long int
-	PCG32 rng(seed);
-	int baseGradientResolution = 4; // 4
-	int mapSize = 512; // 512
-	int octaves = 6; // 64
-	float persistence = 0.5f; // 0.5f - amplitude, influence
-	float lacunarity = 2.0f; // 2.0f - frequency, detail-gain
+    auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    PCG32 rng(seed);
 
-	std::vector<std::vector<std::vector<int>>> gradientGrids(octaves);
-	std::vector<std::vector<float>> noiseGrid(mapSize);
+    std::vector<int> perm(512);
+    initPermutation(rng, perm);
 
+    int resolution = 512;
+    int octaves = 6;
+    float persistence = 0.5f;
+    float lacunarity = 2.0f;
+	float mapSize = 5.0f;
 
-	float currentRes = baseGradientResolution;
-	for (int i = 0; i < octaves; i++)
-	{
-		gradientGrids[i] = generateGradientGrid(rng, currentRes);
-		currentRes *= lacunarity;
-	}
+    std::vector<std::vector<float>> noiseGrid(resolution);
 
-	float minValue = 1000.0f;
-	float maxValue = -1000.0f;
+    float minValue = 1000.0f;
+    float maxValue = -1000.0f;
 
-	for (int i = 0; i < mapSize; i++)
-	{
-		noiseGrid[i].resize(mapSize, 0.0f);
-		for (int j = 0; j < mapSize; j++)
-		{
-			float amplitude = 1.0f;
-			float value = 0.0f;
-			for (int k = 0; k < octaves; k++)
-			{
-				value += generatePerlinValue((float) j, (float) i, gradientGrids[k], mapSize) * amplitude;
-				// i and j swapped, see documentation
-				amplitude *= persistence;
-			}
-			if (value < minValue)
+    for (int i = 0; i < resolution; i++)
+    {
+        noiseGrid[i].resize(resolution, 0.0f);
+
+        for (int j = 0; j < resolution; j++)
+        {
+            float amplitude = 1.0f;
+            float frequency = 1.0f;
+            float value = 0.0f;
+
+            for (int k = 0; k < octaves; k++)
+            {
+                value += generatePerlinValue
+				(
+                    (float)j / resolution * mapSize * frequency,
+                    (float)i / resolution * mapSize * frequency,
+                    perm
+                ) * amplitude;
+
+                amplitude *= persistence;
+                frequency *= lacunarity;
+            }
+
+            if (value < minValue) 
 				minValue = value;
-			if (value > maxValue)
+            if (value > maxValue) 
 				maxValue = value;
-			noiseGrid[i][j] = value;
-	
-		}
-	}
 
-	// Normalizing values between 0.0 and 1.0
-	for (int i = 0; i < mapSize; i++)
-		for (int j = 0; j < mapSize; j++)
-			noiseGrid[i][j] = (noiseGrid[i][j] - minValue) / (maxValue - minValue);
+            noiseGrid[i][j] = value;
+        }
+    }
 
-	writeNoiseGridToFile(noiseGrid);
-	
-	return 0;
+    // Normalize values between 0.0 and 1.0
+    for (int i = 0; i < resolution; i++)
+        for (int j = 0; j < resolution; j++)
+            noiseGrid[i][j] = (noiseGrid[i][j] - minValue) / (maxValue - minValue);
+
+    writeNoiseGridToFile(noiseGrid);
+
+    return 0;
 }
