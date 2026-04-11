@@ -5,9 +5,9 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <cmath>
 #include <chrono>
-#include <cstdint>
+#include <cmath>
+#include <cstdint> //? For convenient typedef names
 #include <typeinfo> //? keep for debugging
 
 //-------------------------------//
@@ -70,15 +70,24 @@ float dotProduct(int hash, float x, float y)
 {
     switch(hash & 7)
     {
-        case 0: return  x + y;
-        case 1: return -x + y;
-        case 2: return  x - y;
-        case 3: return -x - y;
-        case 4: return  x;
-        case 5: return -x;
-        case 6: return  y;
-        case 7: return -y;
+        case 0: 
+			return x + y;
+        case 1: 
+			return -x + y;
+        case 2: 
+			return x - y;
+        case 3: 
+			return -x - y;
+        case 4: 
+			return x;
+        case 5: 
+			return -x;
+        case 6: 
+			return y;
+        case 7: 
+			return -y;
     }
+
     return 0;
 }
 
@@ -98,28 +107,44 @@ float linearInterpolation(float a, float b, float t)
 
 float generatePerlinValue(float x, float y, std::vector<int>& perm)
 {
-    int x0 = (int)floor(x);
-    int y0 = (int)floor(y);
+	// Grid Cell
+    int x0 = (int) floor(x);
+    int y0 = (int) floor(y);
     int x1 = x0 + 1;
     int y1 = y0 + 1;
 
+	// Local Coordinates
     float lx = x - x0;
     float ly = y - y0;
 
     float u = perlinFadeFunction(lx);
     float v = perlinFadeFunction(ly);
 
-	// Hashing corner co-ordinates
-    int hash00 = perm[(perm[x0 & 255] + y0) & 255];
-    int hash10 = perm[(perm[x1 & 255] + y0) & 255];
-    int hash01 = perm[(perm[x0 & 255] + y1) & 255];
-    int hash11 = perm[(perm[x1 & 255] + y1) & 255];
+	/* //? Distance Vector Components - Omitted for micro-optimization
+	float dvx00 = lx;
+	float dvy00 = ly;
+
+	float dvx10 = lx - 1;
+	float dvy10 = ly;
+
+	float dvx01 = lx;
+	float dvy01 = ly - 1;
+
+	float dvx11 = lx - 1;
+	float dvy11 = ly - 1;
+	*/
+
+	// Hashing corner gradient indices
+    int h00 = perm[(perm[x0 & 255] + y0) & 255];
+    int h10 = perm[(perm[x1 & 255] + y0) & 255];
+    int h01 = perm[(perm[x0 & 255] + y1) & 255];
+    int h11 = perm[(perm[x1 & 255] + y1) & 255];
 
 	// Dot Producting
-    float dot00 = dotProduct(hash00, lx, ly);
-    float dot10 = dotProduct(hash10, lx - 1, ly);
-    float dot01 = dotProduct(hash01, lx, ly - 1);
-    float dot11 = dotProduct(hash11, lx - 1, ly - 1);
+    float dot00 = dotProduct(h00, lx, ly);
+    float dot10 = dotProduct(h10, lx - 1, ly);
+    float dot01 = dotProduct(h01, lx, ly - 1);
+    float dot11 = dotProduct(h11, lx - 1, ly - 1);
 
 	// Lerping
     float ix0 = linearInterpolation(dot00, dot10, u);
