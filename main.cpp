@@ -187,11 +187,11 @@ int main()
     std::vector<int> perm(512);
     initPermutation(rng, perm);
 
+	float mapSize = 5.0f;
     int resolution = 512;
     int octaves = 6;
     float persistence = 0.5f;
     float lacunarity = 2.0f;
-	float mapSize = 5.0f;
 
     std::vector<std::vector<float>> noiseGrid(resolution);
 
